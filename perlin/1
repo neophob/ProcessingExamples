@@ -1,0 +1,187 @@
+//src: http://www.iquilezles.org/www/articles/warp/warp.htm
+
+import processing.opengl.*;
+import processing.video.*;
+
+float fXSIZE=720f/1;
+float fYSIZE=480f/1;
+
+int XSIZE=720/1;
+int YSIZE=480/1;
+
+PImage imgPerlin;
+float walk;
+
+int pIterations=4;
+float pDetail=0.6123f;
+
+void setup() {
+  size(XSIZE, YSIZE, P3D);
+  imgPerlin = createImage(XSIZE, YSIZE, RGB);
+  frameRate(30);
+  
+//  noiseDetail(8,0.47);
+//  noiseDetail(6,0.6);
+  
+//noiseDetail(7,0.46)132267; //*726
+
+  noiseDetail(4,0.6123);
+
+}
+
+void draw() { 
+  imgPerlin.loadPixels();
+        
+  int ofs=0;
+  for (int y=0; y<fYSIZE; y++) {
+    for (int x=0; x<fXSIZE; x++) {
+        imgPerlin.pixels[ofs++] = pattern4(x/fXSIZE, y/fYSIZE);
+    }
+  }
+  
+  imgPerlin.updatePixels();
+  walk += 0.004f;
+  
+  //display buffer
+  image(imgPerlin, 0, 0);     
+
+//  saveFrame("scr/filename-####.png");
+}
+
+float f_q_1 = 5.2;
+float f_q_2 = 1.3;
+
+float f_r_x1 = 1.7f;
+float f_r_x2 = 9.2f;
+float f_r_y1 = 8.3f;
+float f_r_y2 = 2.8f;
+
+float mul=255;
+
+void keyPressed() {
+  float value = 0.1f;
+  
+  switch (key) {
+    case 'q':
+      f_q_1-=value;
+      break;
+    case 'Q':
+      f_q_1+=value;
+      break;
+    case 'w':
+      f_q_2-=value;
+      break;
+    case 'W':
+      f_q_2+=value;
+      break;
+    case 'e':
+      f_r_x1-=value;
+      break;
+    case 'E':
+      f_r_x1+=value;
+      break;
+    case 'r':
+      f_r_x2-=value;
+      break;
+    case 'R':
+      f_r_x2+=value;
+      break;
+    case 't':
+      f_r_y1-=value;
+      break;
+    case 'T':
+      f_r_y1+=value;
+      break;
+    case 'z':
+      f_r_y2-=value;
+      break;
+    case 'Z':
+      f_r_y2+=value;
+      break;
+    case 'u':
+      pIterations--;
+      noiseDetail(pIterations,pDetail);
+      break;
+    case 'U':
+      pIterations++;
+      noiseDetail(pIterations,pDetail);
+      break;
+    case 'i':
+      pDetail-=0.01f;
+      noiseDetail(pIterations,pDetail);
+      break;
+    case 'I':
+      pDetail+=0.01f;
+      noiseDetail(pIterations,pDetail);
+      break;
+    case 'o':
+      mul-=10;
+      break;
+    case 'O':
+      mul+=10;
+      break;
+    case 'x':
+      pIterations=2+int(random(14));
+      pDetail=random(9000)/10000f;
+      noiseDetail(pIterations,pDetail);
+      mul=200+random(300);   
+      break;
+
+  }
+
+  print("f_q_1: "+f_q_1);
+  print(" f_q_2: "+f_q_2);
+  print(" f_r_x1: "+f_r_x1);  
+  print(" f_r_x2: "+f_r_x2);  
+  print(" f_r_y1: "+f_r_y1);  
+  print(" f_r_y2: "+f_r_y2);  
+  print(" pDetail: "+pDetail);  
+  print(" pIterations: "+pIterations);  
+  print(" mul: "+mul);    
+  println();
+}
+
+
+//second domain wraping
+color pattern4(float x, float y) {
+    float qx = pattern(x,y);
+    float qy = pattern(x+f_q_1, y+f_q_2);
+
+    float rx = pattern(x + 4.0*qx + f_r_x1, y + 4.0*qy + f_r_x2);
+    float ry = pattern(x + 4.0*qx + f_r_y1, y + 4.0*qy + f_r_y2);
+	
+    float val = pattern(x +4.0*rx, y + 4.0*ry)*mul;
+//    return color(val*rx,val*ry,val*qy);
+    
+    float qq=(qx+qy)/2;
+    float rr=(rx+ry)/2;
+    //return color(val*ry,val*qq,val*qq); //cyan rot
+    return color(val*qq,val*rr,val*(rr+qq)/2);
+}
+
+
+//second domain wraping
+float pattern3(float x, float y) {
+	float qx = pattern(x,y);
+	float qy = pattern(x+5.2f, y+1.3f);
+
+	float rx = pattern(x + 4.0*qx + 1.7f, y + 4.0*qy + 9.2f);
+	float ry = pattern(x + 4.0*qx + 8.3f, y + 4.0*qy + 2.8f);
+	
+    return pattern(x+4.0*rx, y+4.0*ry);
+}
+
+//first domain wraping
+float pattern2(float x, float y) {
+	
+	float qx = pattern(x,y);
+	float qy = pattern(x+5.2f, y+1.3f);
+	
+    return pattern(x+4f*qx, y+4f*qy);
+}
+
+
+float pattern(float x, float y) {
+  return noise(x, y, walk);
+//return (float)SimplexNoise.noise(x,y,walk)*0.6;
+}
