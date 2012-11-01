@@ -4,39 +4,52 @@ import processing.opengl.*;
 import processing.video.*;
 import toxi.math.noise.*;
 
-static float mm = 1;
-static float fXSIZE=720f/mm;
-static float fYSIZE=480f/mm;
-
-int XSIZE=int(720/mm);
-int YSIZE=int(480/mm);
+int XSIZE=720;
+int YSIZE=480;
 
 PImage imgPerlin;
 float walk;
 
-//float mul=255*2;
-//int pIterations=4;
-//float pDetail=0.6123f;
+//color stuff
+private int colSet=0;
+private List<ColorSet> colorSet;
+private ColorSet currentColorSet;
 
 int pIterations=7;
 float pDetail=0.610753f;
-float mul=1020;
+float mul=60*3;
+float sn=0.15f;
 
 void setup() {
-  size(XSIZE, YSIZE, P3D);
-  imgPerlin = createImage(XSIZE, YSIZE, RGB);
-  frameRate(30);
-
+  size(XSIZE, YSIZE, OPENGL);
+  background(0);
+  frameRate(10);
+  smooth();
+  
   //  noiseDetail(8,0.47);
   //  noiseDetail(6,0.6);
 
 //  noiseDetail(7,0.46);//132267; //*726
 
   noiseDetail(pIterations, pDetail);
+  
+  println("load colorsets");
+  colorSet = loadColorsets();
+  //no error check here..
+  println("... done, loaded "+colorSet.size()+" color sets");  
+  currentColorSet = colorSet.get(0);
+  
+  loadPixels();
+  println("size: "+this.pixels.length);
+  updatePixels();
 }
 
-float xstep = 1.0f/fXSIZE;
-float ystep = 1.0f/fYSIZE;
+float xstep = 1.0f/float(XSIZE);
+float ystep = 1.0f/float(YSIZE);
+
+/**
+ * SETUP
+ */
 
 void draw() { 
   int ofs=0;  
@@ -44,21 +57,18 @@ void draw() {
   
   yy=0;
   
-  imgPerlin.loadPixels();
-  for (int y=0; y<fYSIZE; y++) {
+  loadPixels();
+  for (int y=0; y<this.height; y++) {
     xx=0;
-    for (int x=0; x<fXSIZE; x++) {
-      imgPerlin.pixels[ofs++] = pattern4(xx,yy);
+    for (int x=0; x<this.width; x++) {
+      this.pixels[ofs++] = pattern4(xx,yy);      
       xx += xstep;
     }
     yy += ystep;
   }
-  imgPerlin.updatePixels();
+  updatePixels();
   
   walk += 0.001f;
-
-  //display buffer
-  image(imgPerlin, 0, 0);     
 
  //   saveFrame("scr/filename-#####.png");
 }
@@ -67,21 +77,24 @@ final float ofs = 4.0f;
 
 //second domain wraping
 color pattern4(float x, float y) {
-  float qx = pattern(x, y);
-  float qy = pattern(x+5.2f, y+1.3f);
+  float qx = pattern2(x, y);
+  float qy = pattern2(x+5.2f, y+1.3f);
 
-  float rx = pattern(x + ofs*qx + 1.7f, y + ofs*qy + 9.2f);
-  float ry = pattern(x + ofs*qx + 8.3f, y + ofs*qy + 2.8f);
+  float rx = pattern3(x + ofs*qx + 1.7f, y + ofs*qy + 9.2f);
+  float ry = pattern3(x + ofs*qx + 8.3f, y + ofs*qy + 2.8f);
 
-  float val = pattern(x + ofs*rx, y + ofs*ry);//*mul;
+  float val = pattern2(x + ofs*rx, y + ofs*ry);//*mul;
  // print(" "+val);
   float vv=val;
   val*=mul;
   val+=  (rx+ry)*val + val*(qx+qy) + val*(rx*qy);
+  float cc=pattern(qx+x, qy+y);
   
+  return currentColorSet.getSmoothColor(int(val*cc*255f));
+/*  
 //  return color(val*rx,val*ry,val*qy);
 //  return color(val, val, val);
-  float cc=pattern(qx+x, qy+y);
+  
 
 //  return color(val*qx,val*qy,val*cc); //cyan rot
 //  return color(val*cc*val*qx, val*cc*val*qy ,val*cc*val); //cyan rot
@@ -90,20 +103,20 @@ color pattern4(float x, float y) {
      return color(val*0.8f+(val-200), val*(0.9f-vv), val*0.6f);    
   }
  return color(val*0.8f, val*(0.9f-vv), val*0.6f);
-  
+  */
   //return color(val*ry+val*rx, val*qy+val*qx, val*qx+val*ry); //colorfull
 }
 
 
 //second domain wraping
 float pattern3(float x, float y) {
-  float qx = pattern(x, y);
-  float qy = pattern(x+5.2f, y+1.3f);
+  float qx = pattern2(x, y);
+  float qy = pattern2(x+5.2f, y+1.3f);
 
-  float rx = pattern(x + 4.0*qx + 1.7f, y + 4.0*qy + 9.2f);
-  float ry = pattern(x + 4.0*qx + 8.3f, y + 4.0*qy + 2.8f);
+  float rx = pattern2(x + 4.0*qx + 1.7f, y + 4.0*qy + 9.2f);
+  float ry = pattern2(x + 4.0*qx + 8.3f, y + 4.0*qy + 2.8f);
 
-  return pattern(x+4.0*rx, y+4.0*ry);
+  return pattern2(x+4.0*rx, y+4.0*ry);
 }
 
 //first domain wraping
@@ -115,13 +128,12 @@ float pattern2(float x, float y) {
   return pattern(x+4f*qx, y+4f*qy);
 }
 
-float sn=0.6f;
-
 float pattern(float x, float y) {
 //  return noise(x, y, walk);
   float f = (float)SimplexNoise.noise(x,y,walk);
   return (f*sn+f*sn/2+f*sn/4)/2;
 }
+
 
 void keyPressed() {
   float value = 0.1f;
@@ -134,6 +146,20 @@ void keyPressed() {
   case 'U':
     pIterations++;
     noiseDetail(pIterations, pDetail);
+    break;
+  case 'c':
+    colSet--;
+    if (colSet<0) {
+      colSet = colorSet.size()-1;
+    }
+    currentColorSet = colorSet.get(colSet);
+    break;
+  case 'C':
+    colSet++;
+    if (colSet>colorSet.size()-1) {
+       colSet = 0; 
+    }
+    currentColorSet = colorSet.get(colSet);
     break;
   case 's':
     sn-=0.05f;
@@ -150,23 +176,24 @@ void keyPressed() {
     noiseDetail(pIterations, pDetail);
     break;
   case 'o':
-    mul-=10;
+    mul-=1;
     break;
   case 'O':
-    mul+=10;
+    mul+=1;
     break;
   case 'x':
-    pIterations=2+int(random(14));
+    //pIterations=2+int(random(14));
     pDetail=random(9000)/10000f;
     noiseDetail(pIterations, pDetail);
-    mul=200+random(300);   
+    //mul=200+random(300);   
     break;
   }
 
   print(" pDetail: "+pDetail);  
   print(" pIterations: "+pIterations);  
   print(" mul: "+mul);    
-  print(" sn: "+sn);      
+  print(" sn: "+sn); 
+  print(" colSet: "+colSet+" "+currentColorSet.getName());  
   println();
 }
 
