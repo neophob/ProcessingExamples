@@ -4,8 +4,8 @@ import processing.opengl.*;
 import processing.video.*;
 import toxi.math.noise.*;
 
-int XSIZE=720;
-int YSIZE=480;
+int XSIZE=360;//720;
+int YSIZE=240;//480;
 
 PImage imgPerlin;
 float walk;
@@ -17,11 +17,12 @@ private ColorSet currentColorSet;
 
 int pIterations=7;
 float pDetail=0.610753f;
-float mul=60*3;
-float sn=0.15f;
+float mul=60*4;
+float sn=0.10f;
+float ofs = 4.0f;
 
 void setup() {
-  size(XSIZE, YSIZE, OPENGL);
+  size(XSIZE, YSIZE);
   background(0);
   frameRate(10);
   smooth();
@@ -66,24 +67,21 @@ void draw() {
     }
     yy += ystep;
   }
-  updatePixels();
-  
+  updatePixels();  
   walk += 0.001f;
 
- //   saveFrame("scr/filename-#####.png");
+//  saveFrame("scr/filename-#####.png");
 }
-
-final float ofs = 4.0f;
 
 //second domain wraping
 color pattern4(float x, float y) {
-  float qx = pattern2(x, y);
-  float qy = pattern2(x+5.2f, y+1.3f);
+  float qx = pattern3(x, y);
+  float qy = pattern3(x+5.2f, y+1.3f);
 
   float rx = pattern3(x + ofs*qx + 1.7f, y + ofs*qy + 9.2f);
   float ry = pattern3(x + ofs*qx + 8.3f, y + ofs*qy + 2.8f);
 
-  float val = pattern2(x + ofs*rx, y + ofs*ry);//*mul;
+  float val = pattern3(x + ofs*rx, y + ofs*ry);//*mul;
  // print(" "+val);
   float vv=val;
   val*=mul;
@@ -113,10 +111,13 @@ float pattern3(float x, float y) {
   float qx = pattern2(x, y);
   float qy = pattern2(x+5.2f, y+1.3f);
 
-  float rx = pattern2(x + 4.0*qx + 1.7f, y + 4.0*qy + 9.2f);
-  float ry = pattern2(x + 4.0*qx + 8.3f, y + 4.0*qy + 2.8f);
+//  float rx = pattern2(x + 4.0*qx + 1.7f, y + 4.0*qy + 9.2f);
+//  float ry = pattern2(x + 4.0*qx + 8.3f, y + 4.0*qy + 2.8f);
+  float rx = pattern2(x + ofs*qx + 1.7f, y + ofs*qy + 9.2f);
+  float ry = pattern2(x + ofs*qx + 8.3f, y + ofs*qy + 2.8f);
 
-  return pattern2(x+4.0*rx, y+4.0*ry);
+  return pattern2(x+ofs*rx, y+ofs*ry);
+//  return pattern2(x+4.0*rx, y+4.0*ry);
 }
 
 //first domain wraping
@@ -125,13 +126,15 @@ float pattern2(float x, float y) {
   float qx = pattern(x, y);
   float qy = pattern(x+5.2f, y+1.3f);
 
-  return pattern(x+4f*qx, y+4f*qy);
+//  return pattern(x+4f*qx, y+4f*qy);
+  return pattern(x+ofs*qx, y+ofs*qy);
 }
 
 float pattern(float x, float y) {
 //  return noise(x, y, walk);
   float f = (float)SimplexNoise.noise(x,y,walk);
-  return (f*sn+f*sn/2+f*sn/4)/2;
+  float fsn=f*sn;
+  return (fsn+fsn/2+fsn/4)/2;
 }
 
 
@@ -175,11 +178,17 @@ void keyPressed() {
     pDetail+=0.01f;
     noiseDetail(pIterations, pDetail);
     break;
+  case 'm':
+    mul-=2;
+    break;
+  case 'M':
+    mul+=2;
+    break;
   case 'o':
-    mul-=1;
+    ofs--;
     break;
   case 'O':
-    mul+=1;
+    ofs++;
     break;
   case 'x':
     //pIterations=2+int(random(14));
@@ -193,6 +202,7 @@ void keyPressed() {
   print(" pIterations: "+pIterations);  
   print(" mul: "+mul);    
   print(" sn: "+sn); 
+  print(" ofs: "+ofs);
   print(" colSet: "+colSet+" "+currentColorSet.getName());  
   println();
 }
